@@ -919,6 +919,7 @@ const byte* const gGradientPalettes[] PROGMEM = {
   audio_responsive_gp,          //71-58 AudioResponsive  WLEDMM netmindz ar palette - placeholder1
   audio_responsive_gp,          //72-59 AudioResponsive  WLEDMM netmindz ar palette - placeholder2
   audio_responsive_gp,          //73-60 AudioResponsive  WLEDMM netmindz ar palette - placeholder3
+  audio_responsive_gp,          //75-61 BLAQ VOID AR PALETTE
 };
 
 #endif
