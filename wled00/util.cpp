@@ -1,7 +1,7 @@
 #include "wled.h"
 #include "fcn_declare.h"
 #include "const.h"
-
+#include "../usermods/blaqvoid_AR_palette/blaqvoid_AR_palette.h"
 
 //helper to get int value at a position in string
 int getNumVal(const String* req, uint16_t pos)
@@ -574,10 +574,62 @@ CRGB getCRGBForBand(int x, uint8_t *fftResult, int pal) {
     hsv = CHSV(uint8_t(fftResult[b]), 255, x);
     hsv2rgb_rainbow(hsv, value);  // convert to R,G,B
   }
-  else if(pal == 75) { // BLAQ VOID Bass-reactive AR palette
-    int b = map(x, 0, 255, 0, 8); // convert palette position to lower half of freq band
-    hsv = CHSV(uint8_t(fftResult[b]), 255, x);
-    hsv2rgb_rainbow(hsv, value);  // convert to R,G,B
+  else if(pal == 75) { 
+    // BLAQ VOID Bass-reactive AR palette with improvements
+    UsermodBlaqVoidARPalette* arPalette = UsermodBlaqVoidARPalette::getInstance();
+
+    // FREQUENCY BAND GROUPINGS (focused on bass)
+    // Sub bass (deepest kicks, 808s) - bands 0-1
+    uint8_t subBass = (fftResult[0] + fftResult[1]) / 2;
+    // Bass (bass lines) - bands 2-4
+    uint8_t bass = (fftResult[2] + fftResult[3] + fftResult[4]) / 3;
+    // Optional: Midrange (if needed)
+    uint8_t midrange = (fftResult[5] + fftResult[6] + fftResult[7]) / 3;
+
+    // Added smoothing factor (to prevent harsh jumps)
+    float smoothingFactor = arPalette->getSmoothingFactor();            // Get user-defined smoothing factor
+    float fractionControl = arPalette->getFractionControl();            // Added variable for controlling interpolation speed
+
+    // We map the `x` gradient points efficiently using linear interpolation over the full range 0-255.
+    if (x == 0) {
+      // Sub-bass frequencies, darker reds
+      value = CRGB(map(subBass, 0, 255, arPalette->getRedMin(), arPalette->getRedMid()), 0, 0);
+
+    } else if (x == 255) {
+      // Accent color at maximum bass or high intensity (treble)
+      uint8_t totalBass = ((subBass * 2) + bass) / 3;
+      if (totalBass > arPalette->getBassThreshold() && subBass > arPalette->getBassThreshold()) {
+        // Blend Red with accent color
+        uint8_t redMax = arPalette->getRedMax();
+        value = CRGB(
+          redMax,                               // Max Red at this point
+          (redMax * (1.0f - smoothingFactor)) + arPalette->getAccentG() * smoothingFactor, // Green blend
+          (redMax * (1.0f - smoothingFactor)) + arPalette->getAccentB() * smoothingFactor  // Blue blend
+        );
+      } else {
+        value = CRGB(arPalette->getRedMax(), 0, 0);
+      }
+
+    } else if (x <= 128) {
+      // Smooth interpolation between sub-bass and bass based on x (from 0 to 128)
+      float fraction = float(x) / 128.0f * fractionControl;   // Adjust slope with `fractionControl`
+      uint8_t subRed = map(subBass, 0, 255, arPalette->getRedMin(), arPalette->getRedMid());
+      uint8_t bassRed = map(bass, 0, 255, arPalette->getRedMid(), arPalette->getRedMax());
+      // Smoothly interpolate between sub-bass and bass regions
+      uint8_t redValue = (1 - fraction) * subRed + fraction * bassRed;
+      value = CRGB(redValue, 0, 0);  // Red dominant
+
+    } else {
+      // Handling x between 128 and 255 (adding accent gradually)
+      float fraction = float(x - 128) / 127.0f * fractionControl;   // Adjust interpolation speed
+      uint8_t redMax = arPalette->getRedMax();
+      // Introduce accent mainly based on bass presence
+      value = CRGB(
+        redMax, // Keep red at max intensity
+        map(fraction * arPalette->getAccentAmount(), 0, 255, 0, arPalette->getAccentG()),  // Smooth Green transition
+        map(fraction * arPalette->getAccentAmount(), 0, 255, 0, arPalette->getAccentB())   // Smooth Blue transition
+      );
+    }
   }
   return value;
 }

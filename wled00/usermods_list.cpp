@@ -207,6 +207,10 @@
 #include "../usermods/usermod_v2_auto_playlist/usermod_v2_auto_playlist.h"
 #endif
 
+//#ifdef USERMOD_BLAQVOID_AR_PALETTE
+#include "../usermods/blaqvoid_AR_palette/blaqvoid_AR_palette.h"
+//#endif
+
 void registerUsermods()
 {
   /*
@@ -409,5 +413,8 @@ void registerUsermods()
   usermods.add(new AutoPlaylistUsermod(false));
 #endif
 
+//#ifdef USERMOD_BLAQVOID_AR_PALETTE
+  usermods.add(new UsermodBlaqVoidARPalette("BlaqVoidARPal", true));
+//#endif
 
 }
